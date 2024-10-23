@@ -84,12 +84,12 @@ struct ButterflyTrackerApp: App {
         WindowGroup {
             ContentView()
                 .task { 
-						try await self.runMigrations()
+                    try await self.runMigrations()
                 }
         }
     }
     
-	func runMigrations() async throws {
+    func runMigrations() async throws {
         MigrationRunner.removeAllMigrations()
 
         MigrationRunner.markMigrationAsCompleted(withID: ResetButterflyListMigration.id)
