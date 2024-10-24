@@ -28,17 +28,17 @@ Setting up migrations in your app is simple:
 
 ```swift
 // 1. Define a migration
-struct MigrateAuthTokenToKeychain: Migration {
+struct MigrateUserDataToAppGroup: Migration {
     @MigrationDependency private var userDefaultsAppState
-    @MigrationDependency private var keychainAppState
+    @MigrationDependency private var sharedAppState
 
-    static let id: MigrationID = "MigrateAuthTokenToKeychain"
+    static let id: MigrationID = "MigrateUserDataToAppGroup"
 
     func run() async throws {
-        // Migrate the auth token that should have never been stored in UserDefaults over to the Keychain 😱
-        keychainAppState.authToken = userDefaultsAppState.authToken
+        // Migrate the user data from UserDefaults to an app group, so you can share data across targets
+        sharedAppState.userData = userDefaultsAppState.userData
 
-        userDefaultsAppState.authToken = nil
+        userDefaultsAppState.userData = nil
     }
 }
 ```
@@ -46,11 +46,11 @@ struct MigrateAuthTokenToKeychain: Migration {
 ```swift
 // 2. Group your migrations and add dependencies
 let migrations = MigrationGroup {
-    MigrateAuthTokenToKeychain()
+    MigrateUserDataToAppGroup()
     // Add more migrations here
 }
 .migrationDependency(self.userDefaultsAppState)
-.migrationDependency(self.keychainAppState)
+.migrationDependency(self.sharedAppState)
 ```
 
 ```swift
