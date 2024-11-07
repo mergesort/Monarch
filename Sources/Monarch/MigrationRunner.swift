@@ -3,6 +3,10 @@ import Foundation
 /// `MigrationRunner` provides a for running and managing migrations in your app.
 @MainActor
 public struct MigrationRunner {
+    private static var completedMigrations: Set<String> = Set(
+        UserDefaults.standard.array(forKey: UserDefaults.completedMigrationsKey) as? [String] ?? []
+    )
+
     private init() {}
 
     /// Runs all migrations in the provided `MigrationGroup` that are not yet complete.
@@ -13,14 +17,10 @@ public struct MigrationRunner {
     /// - Parameter migrationGroup: The group of migrations to run.
     /// - Throws: Any error that occurs during the execution of a migration.
     public static func runMigrations(_ migrationGroup: MigrationGroup) async throws {
-        var completedMigrations = Set(
-            UserDefaults.standard.array(forKey: UserDefaults.completedMigrationsKey) as? [String] ?? []
-        )
+        var completedMigrations = Self.completedMigrations
 
         for migration in migrationGroup.migrations {
-            guard !completedMigrations.contains(type(of: migration).id.string) else {
-                continue
-            }
+            guard !completedMigrations.contains(type(of: migration).id.string) else { continue }
 
             // Run the migration
             try await migration.run()
@@ -29,8 +29,7 @@ public struct MigrationRunner {
             completedMigrations.insert(type(of: migration).id.string)
         }
 
-        let updatedMigrationsList = Array(completedMigrations)
-        UserDefaults.standard.set(updatedMigrationsList, forKey: UserDefaults.completedMigrationsKey)
+        self.updateCompletedMigrations(completedMigrations)
     }
 
     /// Runs all migrations in the provided `MigrationGroup` that are not yet complete.
@@ -51,14 +50,11 @@ public struct MigrationRunner {
     ///
     /// - Parameter id: The ID of the `Migration` to mark as completed.
     public static func markMigrationAsCompleted(withID id: MigrationID) {
-        var completedMigrations = Set(
-            UserDefaults.standard.array(forKey: UserDefaults.completedMigrationsKey) as? [String] ?? []
-        )
+        var completedMigrations: Set<String> = Self.completedMigrations
 
         completedMigrations.insert(id.string)
 
-        let updatedMigrationsList = Array(completedMigrations)
-        UserDefaults.standard.set(updatedMigrationsList, forKey: UserDefaults.completedMigrationsKey)
+        self.updateCompletedMigrations(completedMigrations)
     }
 
     /// Removes a specific `Migration` from the list of completed migrations.
@@ -68,14 +64,11 @@ public struct MigrationRunner {
     ///
     /// - Parameter id: The ID of the migration to remove from the completed list.
     public static func removeMigration(withID id: MigrationID) {
-        var completedMigrations = Set(
-            UserDefaults.standard.array(forKey: UserDefaults.completedMigrationsKey) as? [String] ?? []
-        )
+        var completedMigrations: Set<String> = Self.completedMigrations
 
         completedMigrations.remove(id.string)
 
-        let updatedMigrationsList = Array(completedMigrations)
-        UserDefaults.standard.set(updatedMigrationsList, forKey: UserDefaults.completedMigrationsKey)
+        self.updateCompletedMigrations(completedMigrations)
     }
 
     /// Removes all migrations from the list of completed migrations.
@@ -83,7 +76,14 @@ public struct MigrationRunner {
     /// This function clears the entire record of completed migrations, effectively
     /// resetting the migration state of the application.
     public static func removeAllMigrations() {
-        UserDefaults.standard.removeObject(forKey: UserDefaults.completedMigrationsKey)
+        self.updateCompletedMigrations([])
+    }
+}
+
+private extension MigrationRunner {
+    static func updateCompletedMigrations(_ completedMigrationIDs: Set<String>) {
+        Self.completedMigrations = completedMigrationIDs
+        UserDefaults.standard.set(Array(completedMigrationIDs), forKey: UserDefaults.completedMigrationsKey)
     }
 }
 
